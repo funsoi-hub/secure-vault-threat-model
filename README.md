@@ -1,48 +1,70 @@
 # Secure Vault: Threat Model
 
-A full threat model of [Secure Vault](https://github.com/funsoi-hub/secure-vault), an encrypted notes and file vault, written **before and during** the build so that security drove the design, not the other way round.
+Before writing a line of code for my [Secure Vault](https://github.com/funsoi-hub/secure-vault) app, I asked one question: **"How would someone break this?"** This repository is my answer: every realistic attack I could find, how likely and damaging it is, and exactly what in the code stops it.
 
-It uses three complementary lenses:
+## Why I did this first
 
-- **STRIDE**: what can go wrong with each component and data flow.
-- **MITRE ATT&CK**: how real adversaries' techniques would apply, and how each is prevented or detected.
-- **Lockheed Martin Cyber Kill Chain**: one realistic attack followed end to end, to show where the chain breaks.
+Fixing a security flaw after launch is expensive. Avoiding it in the design is almost free. Threat modelling is how security teams catch problems at the whiteboard stage, and I wanted my app's design to be driven by real threats rather than guesswork.
 
-Every threat links to the control in the code that addresses it, and almost every control has an automated test. So the model can be checked, not just read.
+I also wanted it to be **checkable**. Every threat below links to the control in the code that addresses it, and almost every control has an automated test. You don't have to take my word for it.
 
 ## At a glance
 
 | | |
 |---|---|
-| Threats identified | **35** across all six STRIDE categories |
-| Mitigated with a tested control | **30** |
-| Accepted, with reasoning and a plan | **5** ([risk register](docs/05-risk-register.md)) |
-| ATT&CK techniques mapped | **17** across 8 tactics |
-| High residual risks at v1.0 | **0** |
+| Threats identified | **35** |
+| Fixed with a tested control | **30** |
+| Accepted on purpose, with a reason and a plan | **5** |
+| Real-world attacker techniques mapped (MITRE ATT&CK) | **17** |
+| High risks left at launch | **0** |
 
-## System overview
+## The three lenses I used
+
+| Framework | The question it answers | Where to find it |
+|---|---|---|
+| **STRIDE** | What can go wrong with each part of the system? | [STRIDE analysis](docs/02-stride.md) |
+| **MITRE ATT&CK** | How do real attackers operate, and would we stop or spot each technique? | [ATT&CK mapping](docs/04-attack-mapping.md) |
+| **Cyber Kill Chain** | If someone attacked step by step, where does the attack fall apart? | [Kill Chain walkthrough](docs/04-attack-mapping.md#cyber-kill-chain-walkthrough) |
+
+<details>
+<summary>What does STRIDE stand for?</summary>
+
+| Letter | Threat | Example in this app |
+|---|---|---|
+| **S**poofing | Pretending to be someone else | Logging in with a stolen password |
+| **T**ampering | Changing data you shouldn't | Editing someone else's note by changing the ID in the URL |
+| **R**epudiation | Denying you did something | "I never shared that note" |
+| **I**nformation disclosure | Seeing data you shouldn't | Reading notes from a stolen database backup |
+| **D**enial of service | Making it unavailable | Flooding the login page |
+| **E**levation of privilege | Gaining more access than allowed | Getting past two-factor with a half-finished login |
+
+</details>
+
+## The system
+
+The dashed boxes are **trust boundaries**, the lines where data passes between things we trust differently. Every arrow that crosses one is somewhere an attacker could push in, so each one gets examined.
 
 ```mermaid
 flowchart LR
     subgraph Internet["Untrusted: Internet"]
         U(["User"])
-        G(["Share-link recipient"])
+        G(["Someone with a share link"])
         X(["Attacker"])
     end
-    subgraph Edge["Hosting edge"]
-        TLS["TLS + proxy"]
+    subgraph Edge["Hosting"]
+        TLS["HTTPS + proxy"]
     end
-    subgraph App["App container (non-root)"]
-        APP["FastAPI app"]
-        C["AES-256-GCM<br/>envelope crypto"]
+    subgraph App["App container"]
+        APP["Web app"]
+        C["Encryption"]
     end
-    subgraph Data["Data"]
-        DB[("Ciphertext,<br/>hashes, audit log")]
+    subgraph Data["Storage"]
+        DB[("Encrypted data,<br/>hashes, audit log")]
     end
     subgraph Secrets["Secrets"]
         K[/"Master key"/]
     end
-    subgraph Supply["Supply chain"]
+    subgraph Supply["Build pipeline"]
         CI["GitHub Actions<br/>security gate"]
     end
     U --> TLS
@@ -55,39 +77,61 @@ flowchart LR
     CI --> APP
 ```
 
-The full data-flow diagram, assets, actors, entry points and assumptions are in [System model](docs/01-system-model.md).
+The full version, with what's being protected, who the users are and what I assumed, is in [System model](docs/01-system-model.md).
 
-## Contents
+## Findings that changed my design
 
-1. [System model](docs/01-system-model.md): scope, assets, trust boundaries, data-flow diagram
-2. [STRIDE analysis](docs/02-stride.md): 35 threats, each rated, with the control and its location
-3. [Attack trees](docs/03-attack-trees.md): "read another user's notes" and "ship a backdoor", with blocked and residual paths
-4. [ATT&CK and Kill Chain mapping](docs/04-attack-mapping.md): technique-by-technique prevention and detection
-5. [Risk register](docs/05-risk-register.md): accepted risks, why, and the plan
+This is the part I'm proudest of. Threat modelling only matters if it changes what gets built, and these decisions came straight out of this work:
 
-## Key findings that changed the design
+| What I found | What I changed |
+|---|---|
+| A leaked database would expose every note | Each user gets their own encryption key, locked by a master key that never touches the database |
+| Someone with database access could copy encrypted data between accounts | Each piece of encrypted data is cryptographically tied to its owner, so moved data won't decrypt |
+| Chat apps "open" links to show previews, which would use up one-time share links | Opening a shared note now needs a real button click, so previews don't count |
+| Share links could leak to other websites through the browser's `Referer` header | The app tells browsers never to send it |
+| A stolen login session could be used to switch off two-factor | Switching it off now needs both the password and a fresh code |
+| A hijacked build tool could slip a backdoor into the app (this really happened to trivy-action in March 2026) | Every build tool is pinned to an exact version and checked against a known fingerprint |
 
-Threat modelling only matters if it changes what gets built. These are decisions that came directly out of this model:
+## Risks I accepted, and why
 
-| Finding | Threat | Design change |
+Not every risk is worth fixing right now. Good security means making those trade-offs openly:
+
+| Risk | Why it's acceptable for now | Plan |
 |---|---|---|
-| A leaked database would expose every note | I-01 | Envelope encryption with per-user data keys; the master key never touches the DB |
-| An attacker with DB access could copy ciphertext between users' rows | T-03 | AES-GCM associated data binds each ciphertext to its owner and field |
-| Chat apps "open" links to show previews, which would burn one-view share links | I-07 | Viewing a share needs a deliberate button press (POST); GET only shows a landing page |
-| Share tokens could leak through the `Referer` header to other sites | I-06 | `Referrer-Policy: no-referrer` on every response |
-| A stolen session could be used to turn MFA off | E-02 | Turning MFA off needs the password and a fresh TOTP code |
-| A hijacked GitHub Action tag could backdoor the build (as happened to trivy-action in March 2026) | T-05 | Every action pinned to a commit SHA; scanner binaries verified by checksum |
+| The server holds the master key, so a fully compromised server could read notes | Still blocks the most common case, a leaked database | Encrypt in the browser (end-to-end) |
+| Someone with direct database access could delete audit logs | They'd already need deep access | Send logs to tamper-proof storage |
+| Sign-up reveals whether an email is registered | Needed for a usable sign-up form; it's rate-limited | Switch to email-verified sign-up |
 
-## Method
+All five are in the [risk register](docs/05-risk-register.md).
 
-1. **Model the system:** draw the data flows and mark trust boundaries; every arrow that crosses a boundary is an entry point.
-2. **Find threats with STRIDE:** walk each element and data flow through Spoofing, Tampering, Repudiation, Information disclosure, Denial of service and Elevation of privilege.
-3. **Rate them:** likelihood × impact (1–3 each), before controls.
-4. **Decide:** mitigate (add a control and a test), or accept (record why, and a plan).
-5. **Check against real attackers:** map to MITRE ATT&CK techniques, and walk one full Kill Chain scenario.
-6. **Keep it alive:** re-review on every design change, and at least every 6 months.
+## Read the full model
+
+1. [System model](docs/01-system-model.md): what's protected, who's involved, the full diagram
+2. [STRIDE analysis](docs/02-stride.md): all 35 threats, rated, each with its fix and test
+3. [Attack trees](docs/03-attack-trees.md): every route to "read someone's notes" and "sneak in malicious code", and which ones are blocked
+4. [ATT&CK and Kill Chain](docs/04-attack-mapping.md): real attacker techniques, and an attack followed step by step
+5. [Risk register](docs/05-risk-register.md): the accepted risks and their plans
+
+## How I approached it
+
+1. **Drew the system**, marking where trust changes.
+2. **Walked every component through STRIDE** to list what could go wrong.
+3. **Rated each threat** by likelihood and impact.
+4. **Decided:** fix it (and write a test), or accept it (and write down why).
+5. **Checked against real attackers** with MITRE ATT&CK and the Kill Chain.
+6. **Kept it alive:** I re-review it whenever the design changes.
+
+## What I learned
+
+- **The best fixes come from the design, not the code.** Most of the controls in the app exist because of a line in this model.
+- **Attackers think in paths, not single bugs.** Attack trees showed me that blocking one step on each route is enough. That's why two-factor authentication matters so much.
+- **Saying "we accept this risk" is a legitimate answer,** as long as it's written down with a reason and a plan.
 
 ## Related projects
 
-- [secure-vault](https://github.com/funsoi-hub/secure-vault): the application this models
-- [devsecops-pipeline](https://github.com/funsoi-hub/devsecops-pipeline): the CI security gate that enforces controls T-04 to T-06
+- [secure-vault](https://github.com/funsoi-hub/secure-vault): the app this models
+- [devsecops-pipeline](https://github.com/funsoi-hub/devsecops-pipeline): the security gate that enforces the supply-chain controls
+
+---
+
+Built by **Funso Isola** · [LinkedIn](https://linkedin.com/in/funisola) · [More projects](https://github.com/funsoi-hub)
