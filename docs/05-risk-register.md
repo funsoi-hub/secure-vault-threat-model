@@ -12,4 +12,4 @@ Risks that are accepted rather than fully mitigated, with the reason and the pla
 
 ## Rating method
 
-Likelihood (1 rare – 3 likely) × Impact (1 minor – 3 severe), before controls in [STRIDE](02-stride.md). Residual rating is after controls: **Low** (accept), **Medium** (accept with a dated plan), **High** (must fix before release; none at v1.0).
+Likelihood (1 rare to 3 likely) × Impact (1 minor to 3 severe), before controls in [STRIDE](02-stride.md). Residual rating is after controls: **Low** (accept), **Medium** (accept with a dated plan), **High** (must fix before release; none at v1.0).

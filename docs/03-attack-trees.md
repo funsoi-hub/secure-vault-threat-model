@@ -15,7 +15,7 @@ flowchart TD
 
     A --> A1["Guess or stuff password ✗<br/>[S-01, S-02]<br/>rate limit + lockout"]
     A --> A2["Password phished<br/>(possible)"]
-    A2 --> A2a["…but MFA code needed ✗<br/>[S-03, S-04]"]
+    A2 --> A2a["...but MFA code needed ✗<br/>[S-03, S-04]"]
     A --> A3["Steal session cookie"]
     A3 --> A3a["via XSS ✗<br/>[I-05] HttpOnly + CSP"]
     A3 --> A3b["via network ✗<br/>HTTPS + HSTS + Secure flag"]
@@ -25,8 +25,8 @@ flowchart TD
     B --> B3["CSRF to share their note to me ✗<br/>[T-01] CSRF token"]
 
     C --> C1["Steal DB backup"]
-    C1 --> C1a["…but ciphertext only ✗<br/>[I-01]"]
-    C1 --> C1b["…and steal master key too"]
+    C1 --> C1a["...but ciphertext only ✗<br/>[I-01]"]
+    C1 --> C1b["...and steal master key too"]
     C1b --> C1c["From git ✗ [I-02] Gitleaks"]
     C1b --> C1d["From the image ✗ [I-02] env-only"]
     C1b --> C1e["From host secret store<br/>⚠️ residual: needs a host compromise"]

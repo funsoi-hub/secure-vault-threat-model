@@ -1,6 +1,6 @@
 # 2. STRIDE analysis
 
-Each threat has an ID, a rating, the control that addresses it, and where that control lives, so a reviewer can check every claim. Ratings are **L**ikelihood × **I**mpact on a 1–3 scale, scored *before* the control.
+Each threat has an ID, a rating, the control that addresses it, and where that control lives, so a reviewer can check every claim. Ratings are **L**ikelihood × **I**mpact on a 1-3 scale, scored *before* the control.
 
 Links point to [secure-vault](https://github.com/funsoi-hub/secure-vault). Every control marked ✅ has an automated test.
 
@@ -48,7 +48,7 @@ Links point to [secure-vault](https://github.com/funsoi-hub/secure-vault). Every
 | I-08 | Uploaded HTML/SVG runs script on the vault's origin | 2×3 | Downloads always sent as `application/octet-stream` with `Content-Disposition: attachment`, plus `nosniff` | `download_file` | ✅ |
 | I-09 | Sensitive pages cached by the browser or a proxy | 2×2 | `Cache-Control: no-store` on every non-static response | `security_middleware` | ✅ |
 | I-10 | Clickjacking tricks a user into clicking "Create link" | 1×2 | `X-Frame-Options: DENY`; CSP `frame-ancestors 'none'` | `security_middleware` | ✅ |
-| I-11 | A compromised server reads decrypted notes | 1×3 | **Accepted for v1.** The server holds the master key. Fix: client-side (end-to-end) encryption, on the roadmap. | – | ⚠️ Accepted |
+| I-11 | A compromised server reads decrypted notes | 1×3 | **Accepted for v1.** The server holds the master key. Fix: client-side (end-to-end) encryption, on the roadmap. | - | ⚠️ Accepted |
 
 ## Denial of service (making it unavailable)
 
@@ -57,7 +57,7 @@ Links point to [secure-vault](https://github.com/funsoi-hub/secure-vault). Every
 | D-01 | Huge request bodies exhaust memory | 2×2 | `Content-Length` required on writes and capped at the upload limit + 64 KB; uploads capped at 5 MB; note size capped | `security_middleware` | ✅ |
 | D-02 | Login flood burns CPU on Argon2 hashing | 2×2 | Per-IP rate limit is checked *before* hashing | `login` | ✅ |
 | D-03 | Attacker deliberately locks a victim out by failing their logins | 2×1 | **Accepted trade-off.** Lockout is temporary (15 min) and rate limits slow it down. | `login` | ⚠️ Accepted |
-| D-04 | Distributed flood from many IPs | 2×2 | Out of scope for the app; handled by the host's edge or CDN. In-memory limits are per process (documented). | – | ⚠️ Accepted |
+| D-04 | Distributed flood from many IPs | 2×2 | Out of scope for the app; handled by the host's edge or CDN. In-memory limits are per process (documented). | - | ⚠️ Accepted |
 
 ## Elevation of privilege (gaining more access)
 

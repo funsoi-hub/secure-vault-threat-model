@@ -14,7 +14,7 @@ How real-world adversary techniques would apply to Secure Vault, and what stops 
 | Credential Access | [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Guessing | Online guessing against one account | Lockout after 5 failures | `account_locked` event | S-01 |
 | Credential Access | [T1110.003](https://attack.mitre.org/techniques/T1110/003/) Password Spraying | One password, many accounts | Per-IP rate limit, common-password blocklist | `login_rate_limited` event | S-02 |
 | Credential Access | [T1110.004](https://attack.mitre.org/techniques/T1110/004/) Credential Stuffing | Breach lists from other sites | MFA, rate limit | Spike in `login_failed` | S-01 |
-| Credential Access | [T1110.002](https://attack.mitre.org/techniques/T1110/002/) Password Cracking | Offline cracking of a stolen DB | Argon2id (memory-hard) | – | I-01 |
+| Credential Access | [T1110.002](https://attack.mitre.org/techniques/T1110/002/) Password Cracking | Offline cracking of a stolen DB | Argon2id (memory-hard) | - | I-01 |
 | Credential Access | [T1539](https://attack.mitre.org/techniques/T1539/) Steal Web Session Cookie | XSS or malware grabs the session | `HttpOnly`, CSP, short lifetimes | Unknown IP in audit log | S-05 |
 | Credential Access | [T1111](https://attack.mitre.org/techniques/T1111/) Multi-Factor Authentication Interception | Phish and relay a TOTP code | Single-use codes (replay protection) | `mfa_failed` events | S-04 |
 | Credential Access | [T1552.001](https://attack.mitre.org/techniques/T1552/001/) Unsecured Credentials: Credentials In Files | Master key committed to git | Env-only secrets, `.gitignore` | Gitleaks (full history) | I-02 |
@@ -31,7 +31,7 @@ A realistic scenario: **credential stuffing against a vault user**, followed ste
 | Stage | Attacker action | Where Secure Vault breaks the chain |
 |---|---|---|
 | 1. Reconnaissance | Buys a combo list from an unrelated breach; checks which emails are registered | Login gives no hint whether an email exists (I-03). Registration does reveal it, but only 10 checks per IP per hour (I-04). |
-| 2. Weaponization | Loads the list into a stuffing tool with rotating proxies | – (happens off-platform) |
+| 2. Weaponization | Loads the list into a stuffing tool with rotating proxies | - (happens off-platform) |
 | 3. Delivery | Sends sign-in attempts | 10 attempts per minute per IP; 5 failures lock the account for 15 min (S-01). |
 | 4. Exploitation | One reused password works | **MFA stops it here** if enabled: a password-only session can't open any page (E-01). |
 | 5. Installation | Tries to keep access: turns off MFA, or plants a long-lived session | Turning off MFA needs password + code (E-02). Sessions expire after 30 min idle or 12 h (S-05). |
